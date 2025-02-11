@@ -1,4 +1,5 @@
 ﻿using Grasshopper.Kernel;
+using Rhino.DocObjects;
 using Rhino.Geometry;
 using Rhino.UI;
 using System;
@@ -41,7 +42,8 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Output", "O", "List of Angles", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles", "A", "List of Angles", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Dimensions", "D", "List of Dimensions", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -52,6 +54,8 @@ namespace DihedralAngle
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             List<string> strings = new List<string>();
+
+            List<AngularDimension> dimensions = new List<AngularDimension>();
 
             Brep buildingBody = new Brep();
             DA.GetData(0, ref buildingBody);
@@ -64,7 +68,7 @@ namespace DihedralAngle
 
                 Vector3d faceNormal = face.NormalAt(0.5, 0.5);
 
-                Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(face.FaceIndex.ToString(), face.GetBoundingBox(false).Center));
+                //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(face.FaceIndex.ToString(), face.GetBoundingBox(false).Center));
 
                 foreach (BrepEdge edge in surroundingEdges)
                 {
@@ -86,15 +90,18 @@ namespace DihedralAngle
 
                     scalingVector.Unitize();
 
-                    double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFace[0]);
+                    AngularDimension d;
+                    double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFace[0], out d);
 
-                    Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
+                    //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
 
                     strings.Add(face.FaceIndex.ToString() + "-" + edge.EdgeIndex.ToString() + ": " + dihedralAngle.ToString());
+                    dimensions.Add(d);
                 }
             }
 
             DA.SetDataList(0, strings);
+            DA.SetDataList(1, dimensions);
         }
 
         /// <summary>
@@ -105,9 +112,7 @@ namespace DihedralAngle
         {
             get
             {
-                // You can add image files to your project resources and access them like this:
-                //return Resources.IconForThisComponent;
-                return null;
+                return Resource1.DihedralAngle;
             }
         }
 
@@ -122,7 +127,7 @@ namespace DihedralAngle
         }
 
         #region Auxiliary Methods
-        public double PreCalculate(BrepEdge edge, Vector3d faceNormal, BrepFace face, BrepFace adjacentFace)
+        public double PreCalculate(BrepEdge edge, Vector3d faceNormal, BrepFace face, BrepFace adjacentFace, out AngularDimension ad)
         {
             Vector3d adjacentFaceNormal = adjacentFace.NormalAt(0.5, 0.5);
 
@@ -160,6 +165,15 @@ namespace DihedralAngle
             rotatedFaceNormal.Rotate(Math.PI / 2, testEdgeVector);
 
             double rotatedDotProduct = Vector3d.Multiply(rotatedFaceNormal, adjacentFaceNormal);
+
+            Vector3d vectorA = Vector3d.CrossProduct(faceNormal, testEdgeVector);
+            vectorA.Unitize();
+            Vector3d vectorB = Vector3d.CrossProduct(adjacentFaceNormal, -testEdgeVector);
+            vectorB.Unitize();
+
+            Arc arc = new Arc(pointA: line.PointAt(0.5) + (vectorA * line.Length * 0.5), tangentA: vectorA, pointB: line.PointAt(0.5) + (vectorB * line.Length * 0.5));
+
+            ad = new AngularDimension(arc, line.Length * 0.5);
 
             return CalculateDihedralAngle(faceNormal, adjacentFaceNormal, rotatedDotProduct);
         }
