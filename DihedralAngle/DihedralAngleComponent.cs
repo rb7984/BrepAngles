@@ -8,6 +8,7 @@ using Rhino.UI;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 
 // In order to load the result of this wizard, you will also need to
@@ -19,6 +20,10 @@ namespace DihedralAngle
 {
     public class DihedralAngleComponent : GH_Component
     {
+        // fields
+        private List<Point3d> pointsForDisplay;
+        private List<int> edgesIndexesForDisplay;
+
         /// <summary>
         /// Each implementation of GH_Component must provide a public 
         /// constructor without any arguments.
@@ -31,6 +36,8 @@ namespace DihedralAngle
               "Calculate Internal Angle of closed Planar Brep",
               "Surface", "Util")
         {
+            pointsForDisplay = new List<Point3d>();
+            edgesIndexesForDisplay = new List<int>();
         }
 
         /// <summary>
@@ -58,7 +65,10 @@ namespace DihedralAngle
         /// to store data in output parameters.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            //TODO add control for open Breps
+            // Reset the display Lists
+            pointsForDisplay.Clear();
+            edgesIndexesForDisplay.Clear();
+
             List<double> edgeIndexes = new List<double>();
             List<double> radians = new List<double>();
             List<double> degrees = new List<double>();
@@ -91,9 +101,8 @@ namespace DihedralAngle
 
                 if (neighbourFaces.Count > 2)
                 {
-                    //TODO Add runtime message for non manifold brep
                     this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold");
-                    break;
+                    return;
                 }
                 else
                 {
@@ -111,8 +120,8 @@ namespace DihedralAngle
                     AngularDimension d;
                     double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFaces[1], out d);
 
-                    //TODO put a dosèòay for edges
-                    //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
+                    pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
+                    edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
                     edgeIndexes.Add(edge.EdgeIndex);
                     radians.Add(dihedralAngle);
@@ -148,6 +157,22 @@ namespace DihedralAngle
         public override Guid ComponentGuid
         {
             get { return new Guid("f5339064-5447-4e67-9be4-7d663dc3a224"); }
+        }
+
+        public override void DrawViewportMeshes(IGH_PreviewArgs args)
+        {
+            for (int i = 0; i< pointsForDisplay.Count; i++)
+            {
+                Plane plane;
+                args.Viewport.GetCameraFrame(out plane);
+                plane.Origin = pointsForDisplay[i];
+
+                double pixelsPerUnit;
+                args.Viewport.GetWorldToScreenScale(pointsForDisplay[i], out pixelsPerUnit);
+                args.Display.Draw3dText(edgesIndexesForDisplay[i].ToString(), Color.Black, plane, 25 / pixelsPerUnit, "Lucida Console", false, false, TextHorizontalAlignment.Center, TextVerticalAlignment.Middle);
+            }
+
+            //base.DrawViewportMeshes(args);
         }
 
         #region Auxiliary Methods
