@@ -1,4 +1,5 @@
-﻿using Grasshopper.Kernel;
+﻿using Grasshopper.GUI.SettingsControls;
+using Grasshopper.Kernel;
 using Grasshopper.Kernel.Geometry.Delaunay;
 using Rhino;
 using Rhino.DocObjects;
@@ -6,6 +7,7 @@ using Rhino.Geometry;
 using Rhino.UI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 // In order to load the result of this wizard, you will also need to
@@ -62,25 +64,35 @@ namespace DihedralAngle
             List<double> degrees = new List<double>();
             List<double> dimensions = new List<double>();
 
-            //TODO Angular Dimensions
+            //TODO Add a display for Angular Dimensions
             //List<AngularDimension> dimensions = new List<AngularDimension>();
             //List<AngularDimensionObject> dimensionsObjects = new List<AngularDimensionObject>();
 
-            Brep buildingBody = new Brep();
-            DA.GetData(0, ref buildingBody);
+            Brep body = new Brep();
+            DA.GetData(0, ref body);
 
-            foreach (BrepEdge edge in buildingBody.Edges)
+            foreach (BrepFace face in body.Faces)
+            {
+                if (!face.IsPlanar())
+                {
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar");
+                    return;
+                }
+            }
+
+            foreach (BrepEdge edge in body.Edges)
             {
                 Curve edgeCurve = edge.DuplicateCurve();
                 edgeCurve.Domain = new Interval(0, 1);
 
                 int[] neighbourFacesIndexes = edge.AdjacentFaces();
 
-                List<BrepFace> neighbourFaces = buildingBody.Faces.Where(f => neighbourFacesIndexes.Contains(f.FaceIndex)).ToList();
+                List<BrepFace> neighbourFaces = body.Faces.Where(f => neighbourFacesIndexes.Contains(f.FaceIndex)).ToList();
 
                 if (neighbourFaces.Count > 2)
                 {
                     //TODO Add runtime message for non manifold brep
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold");
                     break;
                 }
                 else
@@ -99,59 +111,17 @@ namespace DihedralAngle
                     AngularDimension d;
                     double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFaces[1], out d);
 
-                    Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
+                    //TODO put a dosèòay for edges
+                    //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
 
                     edgeIndexes.Add(edge.EdgeIndex);
-                    radians.Add(dihedralAngle);                    
+                    radians.Add(dihedralAngle);
                     degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
 
                     //strings.Add(face.FaceIndex.ToString() + "-" + edge.EdgeIndex.ToString() + ": " + dihedralAngle.ToString());
                     //dimensions.Add(d);
                 }
             }
-
-            #region by face
-            //foreach (BrepFace face in buildingBody.Faces)
-            //{
-            //    int[] edgesIndex = face.AdjacentEdges();
-
-            //    List<BrepEdge> surroundingEdges = buildingBody.Edges.Where(e => edgesIndex.Contains(e.EdgeIndex)).ToList();
-
-            //    Vector3d faceNormal = face.NormalAt(0.5, 0.5);
-
-            //    //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(face.FaceIndex.ToString(), face.GetBoundingBox(false).Center));
-
-            //    foreach (BrepEdge edge in surroundingEdges)
-            //    {
-            //        Curve edgeCurve = edge.DuplicateCurve();
-            //        edgeCurve.Domain = new Interval(0, 1);
-
-            //        int[] neighbourFacesByFace = face.AdjacentFaces();
-            //        int[] neighbourFacesByEdge = edge.AdjacentFaces();
-
-            //        int[] neighbourFaces = neighbourFacesByEdge.Intersect(neighbourFacesByFace).ToArray();
-
-            //        List<BrepFace> neighbourFace = buildingBody.Faces.Where(f => neighbourFaces.Contains(f.FaceIndex)).ToList();
-
-            //        Curve edgeAsCurve = edge.ToNurbsCurve();
-            //        double parameter;
-            //        edgeAsCurve.ClosestPoint(face.GetBoundingBox(true).Center, out parameter);
-
-            //        Vector3d scalingVector = edgeAsCurve.PointAt(parameter) - face.GetBoundingBox(true).Center;
-
-            //        scalingVector.Unitize();
-
-            //        AngularDimension d;
-            //        double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFace[0], out d);
-
-            //        //Rhino.RhinoDoc.ActiveDoc.Objects.Add(new TextDot(edge.EdgeIndex.ToString(), edge.GetBoundingBox(false).Center));
-
-            //        strings.Add(face.FaceIndex.ToString() + "-" + edge.EdgeIndex.ToString() + ": " + dihedralAngle.ToString());
-            //        dimensions.Add(d);
-            //    }
-            //}
-
-            #endregion
 
             DA.SetDataList(0, edgeIndexes);
             DA.SetDataList(1, radians);
