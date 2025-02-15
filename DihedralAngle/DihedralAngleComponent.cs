@@ -23,6 +23,7 @@ namespace DihedralAngle
         // fields
         private List<Point3d> pointsForDisplay;
         private List<int> edgesIndexesForDisplay;
+        private bool switchVisualise;
 
         /// <summary>
         /// Each implementation of GH_Component must provide a public 
@@ -38,6 +39,7 @@ namespace DihedralAngle
         {
             pointsForDisplay = new List<Point3d>();
             edgesIndexesForDisplay = new List<int>();
+            switchVisualise = false;
         }
 
         /// <summary>
@@ -46,6 +48,8 @@ namespace DihedralAngle
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Visualise", "V", "A switch for edge index visualisation", GH_ParamAccess.item);
+            pManager[1].Optional = true;
         }
 
         /// <summary>
@@ -53,9 +57,8 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Indexes", "I", "List of edge Indexes", GH_ParamAccess.list);
-            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians", GH_ParamAccess.list);
-            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -65,14 +68,14 @@ namespace DihedralAngle
         /// to store data in output parameters.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            DA.GetData(1, ref switchVisualise);
+
             // Reset the display Lists
             pointsForDisplay.Clear();
             edgesIndexesForDisplay.Clear();
 
-            List<double> edgeIndexes = new List<double>();
             List<double> radians = new List<double>();
             List<double> degrees = new List<double>();
-            List<double> dimensions = new List<double>();
 
             //TODO Add a display for Angular Dimensions
             //List<AngularDimension> dimensions = new List<AngularDimension>();
@@ -123,18 +126,13 @@ namespace DihedralAngle
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
                     edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
-                    edgeIndexes.Add(edge.EdgeIndex);
                     radians.Add(dihedralAngle);
                     degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
-
-                    //strings.Add(face.FaceIndex.ToString() + "-" + edge.EdgeIndex.ToString() + ": " + dihedralAngle.ToString());
-                    //dimensions.Add(d);
                 }
             }
 
-            DA.SetDataList(0, edgeIndexes);
-            DA.SetDataList(1, radians);
-            DA.SetDataList(2, degrees);
+            DA.SetDataList(0, radians);
+            DA.SetDataList(1, degrees);
         }
 
         /// <summary>
@@ -161,16 +159,17 @@ namespace DihedralAngle
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            for (int i = 0; i< pointsForDisplay.Count; i++)
-            {
-                Plane plane;
-                args.Viewport.GetCameraFrame(out plane);
-                plane.Origin = pointsForDisplay[i];
+            if (switchVisualise)
+                for (int i = 0; i < pointsForDisplay.Count; i++)
+                {
+                    Plane plane;
+                    args.Viewport.GetCameraFrame(out plane);
+                    plane.Origin = pointsForDisplay[i];
 
-                double pixelsPerUnit;
-                args.Viewport.GetWorldToScreenScale(pointsForDisplay[i], out pixelsPerUnit);
-                args.Display.Draw3dText(edgesIndexesForDisplay[i].ToString(), Color.Black, plane, 25 / pixelsPerUnit, "Lucida Console", false, false, TextHorizontalAlignment.Center, TextVerticalAlignment.Middle);
-            }
+                    double pixelsPerUnit;
+                    args.Viewport.GetWorldToScreenScale(pointsForDisplay[i], out pixelsPerUnit);
+                    args.Display.Draw3dText(edgesIndexesForDisplay[i].ToString(), Color.Black, plane, 25 / pixelsPerUnit, "Lucida Console", false, false, TextHorizontalAlignment.Center, TextVerticalAlignment.Middle);
+                }
 
             //base.DrawViewportMeshes(args);
         }
