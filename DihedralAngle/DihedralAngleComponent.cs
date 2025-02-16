@@ -95,9 +95,6 @@ namespace DihedralAngle
 
             foreach (BrepEdge edge in body.Edges)
             {
-                Curve edgeCurve = edge.DuplicateCurve();
-                edgeCurve.Domain = new Interval(0, 1);
-
                 int[] neighbourFacesIndexes = edge.AdjacentFaces();
 
                 List<BrepFace> neighbourFaces = body.Faces.Where(f => neighbourFacesIndexes.Contains(f.FaceIndex)).ToList();
