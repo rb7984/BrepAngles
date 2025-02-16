@@ -109,16 +109,8 @@ namespace DihedralAngle
                     BrepFace face = neighbourFaces[0];
                     Vector3d faceNormal = face.NormalAt(0.5, 0.5);
 
-                    Curve edgeAsCurve = edge.ToNurbsCurve();
-                    double parameter;
-                    edgeAsCurve.ClosestPoint(face.GetBoundingBox(true).Center, out parameter);
-
-                    Vector3d scalingVector = edgeAsCurve.PointAt(parameter) - face.GetBoundingBox(true).Center;
-
-                    scalingVector.Unitize();
-
                     AngularDimension d;
-                    double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFaces[1], out d);
+                    double dihedralAngle = Calculate(edge, faceNormal, face, neighbourFaces[1], out d);
 
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
                     edgesIndexesForDisplay.Add(edge.EdgeIndex);
@@ -172,7 +164,7 @@ namespace DihedralAngle
         }
 
         #region Auxiliary Methods
-        public double PreCalculate(BrepEdge edge, Vector3d faceNormal, BrepFace face, BrepFace adjacentFace, out AngularDimension ad)
+        public double Calculate(BrepEdge edge, Vector3d faceNormal, BrepFace face, BrepFace adjacentFace, out AngularDimension ad)
         {
             Vector3d adjacentFaceNormal = adjacentFace.NormalAt(0.5, 0.5);
 

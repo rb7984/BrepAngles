@@ -6,6 +6,8 @@ using Grasshopper.Kernel;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
+using System.Runtime.InteropServices;
+using Grasshopper.Kernel.Geometry.Delaunay;
 
 namespace DihedralAngle
 {
@@ -65,6 +67,7 @@ namespace DihedralAngle
 
             List<double> radians = new List<double>();
             List<double> degrees = new List<double>();
+            List<Point3d> pointsOnEdges = new List<Point3d>();
 
             //TODO Add a display for Angular Dimensions
             //List<AngularDimension> dimensions = new List<AngularDimension>();
@@ -74,12 +77,15 @@ namespace DihedralAngle
             DA.GetData(0, ref body);
 
             List<double> parameters = new List<double>();
-            DA.GetData(1, ref parameters);
+            DA.GetDataList(1, parameters);
             CheckList(body.Edges.Count, ref parameters);
 
             foreach (BrepEdge edge in body.Edges)
             {
-                Point3d testPointOnEdge = edge.PointAt(parameters[edge.EdgeIndex]);
+                double parameter = edge.Domain.T0 + (edge.Domain.Length * parameters[edge.EdgeIndex]);
+
+                Point3d testPointOnEdge = edge.PointAt(parameter);
+                pointsOnEdges.Add(testPointOnEdge);
 
                 int[] neighbourFacesIndexes = edge.AdjacentFaces();
 
@@ -92,19 +98,23 @@ namespace DihedralAngle
                 }
                 else
                 {
-                    BrepFace face = neighbourFaces[0];
-                    Vector3d faceNormal = face.NormalAt(0.5, 0.5);
+                    BrepFace face0 = neighbourFaces[0];
 
-                    Curve edgeAsCurve = edge.ToNurbsCurve();
-                    double parameter;
-                    edgeAsCurve.ClosestPoint(face.GetBoundingBox(true).Center, out parameter);
+                    double u0, v0;
+                    face0.ClosestPoint(testPointOnEdge, out u0, out v0);
 
-                    Vector3d scalingVector = edgeAsCurve.PointAt(parameter) - face.GetBoundingBox(true).Center;
+                    Vector3d faceNormal0 = face0.NormalAt(u0, v0);
 
-                    scalingVector.Unitize();
+                    BrepFace face1 = neighbourFaces[1];
 
+                    double u1, v1;
+                    face1.ClosestPoint(testPointOnEdge, out u1, out v1);
+
+                    Vector3d faceNormal1 = face1.NormalAt(u1, v1);
+
+                    //Calculate
                     AngularDimension d;
-                    double dihedralAngle = PreCalculate(edge, faceNormal, face, neighbourFaces[1], out d);
+                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d);
 
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
                     edgesIndexesForDisplay.Add(edge.EdgeIndex);
@@ -116,6 +126,7 @@ namespace DihedralAngle
 
             DA.SetDataList(0, radians);
             DA.SetDataList(1, degrees);
+            DA.SetDataList(2, pointsOnEdges);
         }
 
         /// <summary>
@@ -159,13 +170,14 @@ namespace DihedralAngle
 
         public void CheckList(int count, ref List<double> list)
         {
+            // TODO parameters should all be values between 0 and 1
             if (list.Count == 0)
             {
                 list.AddRange(Enumerable.Repeat(0.5, count));
             }
             else if (list.Count < count)
             {
-                list.AddRange(Enumerable.Repeat(0.5, list.Count - count));
+                list.AddRange(Enumerable.Repeat(list[list.Count - 1], count - list.Count));
             }
             else if (list.Count > count)
             {
@@ -173,55 +185,32 @@ namespace DihedralAngle
             }
         }
 
-        public double PreCalculate(BrepEdge edge, Vector3d faceNormal, BrepFace face, BrepFace adjacentFace, out AngularDimension ad)
+        public double Calculate(BrepEdge edge, Point3d testPoint, Vector3d faceNormal1, Vector3d faceNormal2, BrepFace face, out AngularDimension ad)
         {
-            Vector3d adjacentFaceNormal = adjacentFace.NormalAt(0.5, 0.5);
-
             var loop = face.OuterLoop;
             Curve loopasacurve = loop.To3dCurve();
-            Polyline loopasapolyline = new Polyline();
 
-            if (loopasacurve.IsPolyline())
-            {
-                //TODO maximum length può causare dei danni?
-                loopasapolyline = loopasacurve.ToPolyline(0.1, 0.1, 0.1, 3000).ToPolyline();
-            }
+            double t = 0;
+            loopasacurve.ClosestPoint(testPoint, out t);
 
-            loopasapolyline.MergeColinearSegments(0.1, true);
-            Line[] ll = loopasapolyline.GetSegments();
-            Line line = new Line();
-
-            double distance = 100;
-            int counter = 0;
-            while (distance > 1)
-            {
-                double t;
-                if (edge.ClosestPoint(ll[counter].PointAt(0.5), out t))
-                {
-                    distance = edge.PointAt(t).DistanceTo(ll[counter].PointAt(0.5));
-                    line = ll[counter];
-                    counter++;
-                }
-            }
-
-            Vector3d testEdgeVector = line.Direction;
+            Vector3d testEdgeVector = loopasacurve.TangentAt(t);
             testEdgeVector.Unitize();
 
-            Vector3d rotatedFaceNormal = new Vector3d(faceNormal);
+            Vector3d rotatedFaceNormal = new Vector3d(faceNormal1);
             rotatedFaceNormal.Rotate(Math.PI / 2, testEdgeVector);
 
-            double rotatedDotProduct = Vector3d.Multiply(rotatedFaceNormal, adjacentFaceNormal);
+            double rotatedDotProduct = Vector3d.Multiply(rotatedFaceNormal, faceNormal2);
 
-            Vector3d vectorA = Vector3d.CrossProduct(faceNormal, testEdgeVector);
+            Vector3d vectorA = Vector3d.CrossProduct(faceNormal1, testEdgeVector);
             vectorA.Unitize();
-            Vector3d vectorB = Vector3d.CrossProduct(adjacentFaceNormal, -testEdgeVector);
+            Vector3d vectorB = Vector3d.CrossProduct(faceNormal2, -testEdgeVector);
             vectorB.Unitize();
 
-            Arc arc = new Arc(pointA: line.PointAt(0.5) + (vectorA * line.Length * 0.5), tangentA: vectorA, pointB: line.PointAt(0.5) + (vectorB * line.Length * 0.5));
+            Arc arc = new Arc(pointA: testPoint + (vectorA * loopasacurve.GetLength() * 0.2), tangentA: vectorA, pointB: testPoint + (vectorB * loopasacurve.GetLength() * 0.2));
 
-            ad = new AngularDimension(arc, line.Length * 0.5);
+            ad = new AngularDimension(arc, loopasacurve.GetLength() * 0.5);
 
-            return CalculateDihedralAngle(faceNormal, adjacentFaceNormal, rotatedDotProduct);
+            return CalculateDihedralAngle(faceNormal1, faceNormal2, rotatedDotProduct);
         }
 
         public double CalculateDihedralAngle(Vector3d normal1, Vector3d normal2, double dotProductRotated)
