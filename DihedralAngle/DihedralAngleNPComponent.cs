@@ -51,6 +51,9 @@ namespace DihedralAngle
             pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index", GH_ParamAccess.list);
             pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index", GH_ParamAccess.list);
             pManager.AddPointParameter("Points on Edges", "P", "List of Points on Edges - associated with edge index", GH_ParamAccess.list);
+
+            pManager.AddVectorParameter("Vectors A", "VA", "va", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Vectors B", "VB", "vb", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -72,6 +75,9 @@ namespace DihedralAngle
             //TODO Add a display for Angular Dimensions
             //List<AngularDimension> dimensions = new List<AngularDimension>();
             //List<AngularDimensionObject> dimensionsObjects = new List<AngularDimensionObject>();
+
+            List<Vector3d> vectorsA = new List<Vector3d>();
+            List<Vector3d> vectorsB = new List<Vector3d>();
 
             Brep body = new Brep();
             DA.GetData(0, ref body);
@@ -114,19 +120,26 @@ namespace DihedralAngle
 
                     //Calculate
                     AngularDimension d;
-                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d);
+                    Vector3d va;
+                    Vector3d vb;
+                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out va, out vb);
 
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
                     edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
                     radians.Add(dihedralAngle);
                     degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
+
+                    vectorsA.Add(va);
+                    vectorsB.Add(vb);
                 }
             }
 
             DA.SetDataList(0, radians);
             DA.SetDataList(1, degrees);
             DA.SetDataList(2, pointsOnEdges);
+            DA.SetDataList(3, vectorsA);
+            DA.SetDataList(4, vectorsB);
         }
 
         /// <summary>
@@ -185,7 +198,7 @@ namespace DihedralAngle
             }
         }
 
-        public double Calculate(BrepEdge edge, Point3d testPoint, Vector3d faceNormal1, Vector3d faceNormal2, BrepFace face, out AngularDimension ad)
+        public double Calculate(BrepEdge edge, Point3d testPoint, Vector3d faceNormal1, Vector3d faceNormal2, BrepFace face, out AngularDimension ad, out Vector3d va, out Vector3d vb)
         {
             var loop = face.OuterLoop;
             Curve loopasacurve = loop.To3dCurve();
@@ -208,6 +221,8 @@ namespace DihedralAngle
 
             Arc arc = new Arc(pointA: testPoint + (vectorA * loopasacurve.GetLength() * 0.2), tangentA: vectorA, pointB: testPoint + (vectorB * loopasacurve.GetLength() * 0.2));
 
+            va = vectorA;
+            vb = vectorB;
             ad = new AngularDimension(arc, loopasacurve.GetLength() * 0.5);
 
             return CalculateDihedralAngle(faceNormal1, faceNormal2, rotatedDotProduct);
