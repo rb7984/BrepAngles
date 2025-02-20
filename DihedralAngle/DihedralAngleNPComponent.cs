@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Drawing;
+using System.Diagnostics;
 using Grasshopper.Kernel;
 using Rhino;
 using Rhino.DocObjects;
@@ -37,7 +38,7 @@ namespace DihedralAngle
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Parameters", "P", "A list of parameters for the point in the edge - if none is provided, 0.5 will be input", GH_ParamAccess.list);
+            pManager.AddNumberParameter("Parameters", "P", "A list of parameters for the point on the edge from 0 to 1 - if none is provided, 0.5 will be input", GH_ParamAccess.list);
             pManager[1].Optional = true;
             pManager.AddBooleanParameter("Visualise", "V", "A switch for edge index visualisation", GH_ParamAccess.item);
             pManager[2].Optional = true;
@@ -126,13 +127,11 @@ namespace DihedralAngle
 
                     Vector3d faceNormal1 = face1.NormalAt(u1, v1);
 
-                    //Calculate
-                    AngularDimension d;
                     Vector3d ta;
                     Vector3d tb;
                     Vector3d cpa;
                     Vector3d cpb;
-                    double dihedralAngle = Calculate(testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
+                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
 
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
                     edgesIndexesForDisplay.Add(edge.EdgeIndex);
@@ -219,17 +218,34 @@ namespace DihedralAngle
             }
         }
 
-        public double Calculate(Point3d testPoint, Vector3d faceNormal1, Vector3d faceNormal2, BrepFace face, out AngularDimension ad, out Vector3d ta, out Vector3d tb, out Vector3d cpa, out Vector3d cpb)
+        public double Calculate(BrepEdge edge, Point3d testPoint, Vector3d faceNormal1, Vector3d faceNormal2, BrepFace face, out AngularDimension ad, out Vector3d ta, out Vector3d tb, out Vector3d cpa, out Vector3d cpb)
         {
-            var loop = face.OuterLoop;
-            Curve loopasacurve = loop.To3dCurve();
+            BrepLoop loop = face.OuterLoop;
+            Curve loopAsACurve = loop.To3dCurve();
+
+            //TODO for t=0 or t=length TangentAt doesn't return correct value, causing rotatedFaceNormal to be wrong thus not calculating correctly the dihedralAngle
+            Curve[] loopSegments = loopAsACurve.DuplicateSegments();
+
+            Debug.WriteLine(loopSegments.Length);
+
+            Curve loopSegment = null;
+            Point3d test = edge.PointAt(edge.Domain.T0 + (edge.Domain.Length * 0.5));
+
+            loopSegment = loopSegments.Where(s =>
+            {
+                double tt;
+                if (s.ClosestPoint(test, out tt))
+                {
+                    double distance = s.PointAt(tt).DistanceTo(test);
+                    return distance < 1e-3;
+                }
+                return false;
+            }).FirstOrDefault();
 
             double t = 0;
-            loopasacurve.ClosestPoint(testPoint, out t);
+            loopSegment.ClosestPoint(testPoint, out t);
 
-            //TODO for t=0 0r t=length TangentAt doesn't return correct value, causing rotatedFaceNormal to ne wrong thus 
-            // not calculating correctly the dihedralAngle
-            Vector3d testEdgeVector = loopasacurve.TangentAt(t);
+            Vector3d testEdgeVector = loopSegment.TangentAt(t);
             testEdgeVector.Unitize();
 
             Vector3d rotatedFaceNormal = new Vector3d(faceNormal1);
@@ -242,15 +258,15 @@ namespace DihedralAngle
             Vector3d crossProductB = Vector3d.CrossProduct(faceNormal2, -testEdgeVector);
             crossProductB.Unitize();
 
-            Arc arc = new Arc(pointA: testPoint + (crossProductA * loopasacurve.GetLength() * 0.2),
+            Arc arc = new Arc(pointA: testPoint + (crossProductA * loopAsACurve.GetLength() * 0.2),
                 tangentA: crossProductA,
-                pointB: testPoint + (crossProductB * loopasacurve.GetLength() * 0.2));
+                pointB: testPoint + (crossProductB * loopAsACurve.GetLength() * 0.2));
 
             ta = testEdgeVector;
             tb = -testEdgeVector;
             cpa = crossProductA;
             cpb = crossProductB;
-            ad = new AngularDimension(arc, loopasacurve.GetLength() * 0.5);
+            ad = new AngularDimension(arc, loopAsACurve.GetLength() * 0.5);
 
             return CalculateDihedralAngle(faceNormal1, faceNormal2, rotatedDotProduct);
         }
