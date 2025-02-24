@@ -24,9 +24,9 @@ namespace DihedralAngle
         /// Initializes a new instance of the MyComponent1 class.
         /// </summary>
         public PlanarAngle()
-          : base("MyComponent1", "Nickname",
-              "Description",
-              "Category", "Subcategory")
+          : base("Planar Angle", "PA",
+              "Calculate all Angles of every Brep's face",
+              "Surface", "Util")
         {
             vertexPointsForDisplay = new List<Point3d>();
             facePointsForDisplay = new List<Point3d>();
