@@ -59,6 +59,7 @@
     <Compile Include="DihedralAngleComponent.cs" />
     <Compile Include="DihedralAngleInfo.cs" />
     <Compile Include="DihedralAngleNPComponent.cs" />
+    <Compile Include="PlanarAngle.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resource1.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -80,6 +81,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\DihedralAngleNP.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\PlanarAngle.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

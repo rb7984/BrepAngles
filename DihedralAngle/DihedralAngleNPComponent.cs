@@ -127,6 +127,7 @@ namespace DihedralAngle
 
                     Vector3d faceNormal1 = face1.NormalAt(u1, v1);
 
+                    AngularDimension d;
                     Vector3d ta;
                     Vector3d tb;
                     Vector3d cpa;

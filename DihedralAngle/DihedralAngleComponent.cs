@@ -110,6 +110,7 @@ namespace DihedralAngle
                     Vector3d faceNormal = face.NormalAt(0.5, 0.5);
 
                     AngularDimension d;
+                    //CLEAN facenormal can go inside the method
                     double dihedralAngle = Calculate(edge, faceNormal, face, neighbourFaces[1], out d);
 
                     pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
