@@ -15,10 +15,16 @@ namespace DihedralAngle
     {
         // fields
         private List<Point3d> vertexPointsForDisplay;
+        private List<int> faceIndexesForDisplay;
+
         private List<Point3d> facePointsForDisplay;
         private List<int> vertexIndexesForDisplay;
-        private List<int> faceIndexesForDisplay;
+
+        private List<Arc> dimensionsArcsForDisplay;
+        private List<double> dimensionsValuesForDisplay;
+
         private bool switchVisualise;
+        private const int angulardimensionOffset = 50;
 
         /// <summary>
         /// Initializes a new instance of the MyComponent1 class.
@@ -29,9 +35,14 @@ namespace DihedralAngle
               "Surface", "Util")
         {
             vertexPointsForDisplay = new List<Point3d>();
-            facePointsForDisplay = new List<Point3d>();
             vertexIndexesForDisplay = new List<int>();
+
+            facePointsForDisplay = new List<Point3d>();
             faceIndexesForDisplay = new List<int>();
+
+            dimensionsArcsForDisplay = new List<Arc>();
+            dimensionsValuesForDisplay = new List<double>();
+
             switchVisualise = false;
         }
 
@@ -50,7 +61,7 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("vertex Indexes", "I", "Tree of Indexes for the Angles", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Vertex Indexes", "I", "Tree of Indexes for the Angles", GH_ParamAccess.tree);
             pManager.AddGenericParameter("Angles Rad", "AR", "Tree of Angles in Radians - associated with face/vertex index", GH_ParamAccess.tree);
             pManager.AddGenericParameter("Angles Deg", "AD", "Tree of Angles in Degrees - associated with face/vertex index", GH_ParamAccess.tree);
         }
@@ -63,9 +74,13 @@ namespace DihedralAngle
         {
             // Reset the display Lists
             vertexPointsForDisplay.Clear();
-            facePointsForDisplay.Clear();
             vertexIndexesForDisplay.Clear();
+
+            facePointsForDisplay.Clear();
             faceIndexesForDisplay.Clear();
+
+            dimensionsArcsForDisplay.Clear();
+            dimensionsValuesForDisplay.Clear();
 
             // Output
             Grasshopper.DataTree<double> treevertexIndexes = new Grasshopper.DataTree<double>();
@@ -83,8 +98,8 @@ namespace DihedralAngle
                 faceIndexesForDisplay.Add(face.FaceIndex);
 
                 List<double> vertexIndexes = new List<double>();
-                List<double> anglesDeg = new List<double>();
                 List<double> anglesRad = new List<double>();
+                List<double> anglesDeg = new List<double>();
 
                 Vector3d faceNormal = face.NormalAt(0.5, 0.5);
 
@@ -148,7 +163,7 @@ namespace DihedralAngle
                     double angle = Vector3d.VectorAngle(va, vb);
                     Vector3d cp = Vector3d.CrossProduct(va, vb);
 
-                    if (cp.IsParallelTo(faceNormal) > 0)
+                    if (cp.IsParallelTo(faceNormal) == 1)
                         angle = (Math.PI * 2) - angle;
 
                     vertexIndexes.Add(bv.VertexIndex);
@@ -157,16 +172,21 @@ namespace DihedralAngle
 
                     vertexPointsForDisplay.Add(bv.Location);
                     vertexIndexesForDisplay.Add(bv.VertexIndex);
-                }
-                treevertexIndexes.AddRange(vertexIndexes, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
-                treeAnglesDeg.AddRange(anglesDeg, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
-                treeAnglesRad.AddRange(anglesRad, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
 
+                    Arc arc = new Arc(plane: new Plane(bv.Location, vb, -Vector3d.CrossProduct(vb, faceNormal)), center: bv.Location, radius: angulardimensionOffset, angleRadians: angle);
+
+                    dimensionsArcsForDisplay.Add(arc);
+                    dimensionsValuesForDisplay.Add(RhinoMath.ToDegrees(angle));
+                }
+
+                treevertexIndexes.AddRange(vertexIndexes, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
+                treeAnglesRad.AddRange(anglesRad, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
+                treeAnglesDeg.AddRange(anglesDeg, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
             }
 
             DA.SetDataTree(0, treevertexIndexes);
-            DA.SetDataTree(1, treeAnglesDeg);
-            DA.SetDataTree(2, treeAnglesRad);
+            DA.SetDataTree(1, treeAnglesRad);
+            DA.SetDataTree(2, treeAnglesDeg);
         }
 
         /// <summary>
@@ -211,6 +231,18 @@ namespace DihedralAngle
                     double pixelsPerUnit;
                     args.Viewport.GetWorldToScreenScale(facePointsForDisplay[i], out pixelsPerUnit);
                     args.Display.Draw3dText(faceIndexesForDisplay[i].ToString(), Color.Black, plane, 25 / pixelsPerUnit, "Lucida Console", false, false, TextHorizontalAlignment.Center, TextVerticalAlignment.Middle);
+                }
+                for (int i = 0; i < dimensionsValuesForDisplay.Count; i++)
+                {
+                    Plane plane;
+                    args.Viewport.GetCameraFrame(out plane);
+                    plane.Origin = dimensionsArcsForDisplay[i].PointAt(0.5);
+
+                    double pixelsPerUnit;
+                    args.Viewport.GetWorldToScreenScale(dimensionsArcsForDisplay[i].Center, out pixelsPerUnit);
+                    args.Display.Draw3dText(dimensionsValuesForDisplay[i].ToString(), Color.Black, plane, 25 / pixelsPerUnit, "Lucida Console", false, false, TextHorizontalAlignment.Center, TextVerticalAlignment.Middle);
+
+                    args.Display.DrawArc(dimensionsArcsForDisplay[i], Color.Aqua);
                 }
             }
             //base.DrawViewportMeshes(args);
