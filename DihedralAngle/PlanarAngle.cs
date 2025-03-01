@@ -93,6 +93,13 @@ namespace DihedralAngle
             DA.GetData(0, ref body);
 
             foreach (BrepFace face in body.Faces)
+                if (!face.IsPlanar())
+                {
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar");
+                    return;
+                }
+
+            foreach (BrepFace face in body.Faces)
             {
                 facePointsForDisplay.Add(face.GetBoundingBox(false).Center);
                 faceIndexesForDisplay.Add(face.FaceIndex);
@@ -176,7 +183,7 @@ namespace DihedralAngle
                     Arc arc = new Arc(plane: new Plane(bv.Location, vb, -Vector3d.CrossProduct(vb, faceNormal)), center: bv.Location, radius: angulardimensionOffset, angleRadians: angle);
 
                     dimensionsArcsForDisplay.Add(arc);
-                    dimensionsValuesForDisplay.Add(RhinoMath.ToDegrees(angle));
+                    dimensionsValuesForDisplay.Add(Math.Round(RhinoMath.ToDegrees(angle), 2));
                 }
 
                 treevertexIndexes.AddRange(vertexIndexes, new Grasshopper.Kernel.Data.GH_Path(face.FaceIndex));
