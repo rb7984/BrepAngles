@@ -47,8 +47,8 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Visualise", "V", "A switch for edge index visualisation", GH_ParamAccess.item);
+            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated.", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Visualise", "V", "A switch for edge index visualisation.", GH_ParamAccess.item);
             pManager[1].Optional = true;
         }
 
@@ -57,8 +57,8 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index", GH_ParamAccess.list);
-            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index.", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index.", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace DihedralAngle
             {
                 if (!face.IsPlanar())
                 {
-                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar");
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar.");
                     return;
                 }
             }
@@ -101,7 +101,7 @@ namespace DihedralAngle
 
                 if (neighbourFaces.Count > 2)
                 {
-                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold");
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold.");
                     return;
                 }
                 else

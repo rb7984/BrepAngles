@@ -24,7 +24,7 @@ namespace DihedralAngle
         /// </summary>
         public DihedralAngleNPComponent()
           : base("DihedralAngleNP", "DANP",
-              "\"Calculate Internal Angle of closed Brep",
+              "\"Calculate Internal Angles of a closed Brep",
               "Surface", "Util")
         {
             pointsForDisplay = new List<Point3d>();
@@ -37,10 +37,10 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Parameters", "P", "A list of parameters for the point on the edge from 0 to 1 - if none is provided, 0.5 will be input", GH_ParamAccess.list);
+            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated.", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Parameters", "P", "A list of parameters for the point on the edge from 0 to 1 - if none is provided, 0.5 will be input.", GH_ParamAccess.list);
             pManager[1].Optional = true;
-            pManager.AddBooleanParameter("Visualise", "V", "A switch for edge index visualisation", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Visualise", "V", "A switch for Edge index visualisation.", GH_ParamAccess.item);
             pManager[2].Optional = true;
         }
 
@@ -49,16 +49,16 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index", GH_ParamAccess.list);
-            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index", GH_ParamAccess.list);
-            pManager.AddPointParameter("Points on Edges", "P", "List of Points on Edges - associated with edge index", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Rad", "AR", "List of Angles in Radians - associated with edge index.", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Angles Deg", "AD", "List of Angles in Degrees - associated with edge index.", GH_ParamAccess.list);
+            pManager.AddPointParameter("Points on Edges", "P", "List of Points on Edges - associated with edge index.", GH_ParamAccess.list);
 
-            pManager.AddVectorParameter("Tangent A", "TA", "ta", GH_ParamAccess.list);
-            pManager.AddVectorParameter("Normals A", "NA", "na", GH_ParamAccess.list);
-            pManager.AddVectorParameter("Cross Product A", "CPA", "cpa", GH_ParamAccess.list);
-            pManager.AddVectorParameter("Tangent B", "TB", "tb", GH_ParamAccess.list);
-            pManager.AddVectorParameter("Normals B", "NB", "nb", GH_ParamAccess.list);
-            pManager.AddVectorParameter("Cross Product B", "CPB", "cpb", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Tangent A", "TA", "Vector tangent for Face A.", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Normals A", "NA", "Vector normal for Face A.", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Cross Product A", "CPA", "Cross product Vector for Face A.", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Tangent B", "TB", "Vector tangent for Face B.", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Normals B", "NB", "Vector normal for Face B.", GH_ParamAccess.list);
+            pManager.AddVectorParameter("Cross Product B", "CPB", "Cross product Vector for Face B.", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -69,17 +69,12 @@ namespace DihedralAngle
         {
             DA.GetData(2, ref switchVisualise);
 
-            // Reset the display Lists
             pointsForDisplay.Clear();
             edgesIndexesForDisplay.Clear();
 
             List<double> radians = new List<double>();
             List<double> degrees = new List<double>();
             List<Point3d> pointsOnEdges = new List<Point3d>();
-
-            //TODO Add a display for Angular Dimensions
-            //List<AngularDimension> dimensions = new List<AngularDimension>();
-            //List<AngularDimensionObject> dimensionsObjects = new List<AngularDimensionObject>();
 
             List<Vector3d> tangentsA = new List<Vector3d>();
             List<Vector3d> normalsA = new List<Vector3d>();
@@ -108,46 +103,40 @@ namespace DihedralAngle
 
                 if (neighbourFaces.Count > 2)
                 {
-                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold");
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold.");
                     return;
                 }
-                else
-                {
-                    BrepFace face0 = neighbourFaces[0];
 
-                    double u0, v0;
-                    face0.ClosestPoint(testPointOnEdge, out u0, out v0);
+                BrepFace face0 = neighbourFaces[0];
+                BrepFace face1 = neighbourFaces[1];
 
-                    Vector3d faceNormal0 = face0.NormalAt(u0, v0);
+                double u0, v0, u1, v1;
+                face0.ClosestPoint(testPointOnEdge, out u0, out v0);
+                face1.ClosestPoint(testPointOnEdge, out u1, out v1);
 
-                    BrepFace face1 = neighbourFaces[1];
+                Vector3d faceNormal0 = face0.NormalAt(u0, v0);
+                Vector3d faceNormal1 = face1.NormalAt(u1, v1);
 
-                    double u1, v1;
-                    face1.ClosestPoint(testPointOnEdge, out u1, out v1);
+                AngularDimension d;
+                Vector3d ta;
+                Vector3d tb;
+                Vector3d cpa;
+                Vector3d cpb;
+                double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
 
-                    Vector3d faceNormal1 = face1.NormalAt(u1, v1);
+                pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
+                edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
-                    AngularDimension d;
-                    Vector3d ta;
-                    Vector3d tb;
-                    Vector3d cpa;
-                    Vector3d cpb;
-                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
+                radians.Add(dihedralAngle);
+                degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
 
-                    pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
-                    edgesIndexesForDisplay.Add(edge.EdgeIndex);
+                tangentsA.Add(ta);
+                normalsA.Add(faceNormal0);
+                crossProductsA.Add(cpa);
 
-                    radians.Add(dihedralAngle);
-                    degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
-
-                    tangentsA.Add(ta);
-                    normalsA.Add(faceNormal0);
-                    crossProductsA.Add(cpa);
-
-                    tangentsB.Add(tb);
-                    normalsB.Add(faceNormal1);
-                    crossProductsB.Add(cpb);
-                }
+                tangentsB.Add(tb);
+                normalsB.Add(faceNormal1);
+                crossProductsB.Add(cpb);
             }
 
             DA.SetDataList(0, radians);
@@ -224,7 +213,6 @@ namespace DihedralAngle
             BrepLoop loop = face.OuterLoop;
             Curve loopAsACurve = loop.To3dCurve();
 
-            //TODO for t=0 or t=length TangentAt doesn't return correct value, causing rotatedFaceNormal to be wrong thus not calculating correctly the dihedralAngle
             Curve[] loopSegments = loopAsACurve.DuplicateSegments();
 
             Debug.WriteLine(loopSegments.Length);

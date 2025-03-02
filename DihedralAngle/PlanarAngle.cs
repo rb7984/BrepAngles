@@ -51,8 +51,8 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Visualise", "V", "A switch for vertex index visualisation", GH_ParamAccess.item);
+            pManager.AddBrepParameter("Brep", "B", "A planar Brep to be evaluated.", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Visualise", "V", "A switch for vertex index visualisation.", GH_ParamAccess.item);
             pManager[1].Optional = true;
         }
 
@@ -61,9 +61,9 @@ namespace DihedralAngle
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Vertex Indexes", "I", "Tree of Indexes for the Angles", GH_ParamAccess.tree);
-            pManager.AddGenericParameter("Angles Rad", "AR", "Tree of Angles in Radians - associated with face/vertex index", GH_ParamAccess.tree);
-            pManager.AddGenericParameter("Angles Deg", "AD", "Tree of Angles in Degrees - associated with face/vertex index", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Vertex Indexes", "I", "Tree of Indexes for the Angles.", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Angles Rad", "AR", "Tree of Angles in Radians - associated with face/vertex index.", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Angles Deg", "AD", "Tree of Angles in Degrees - associated with face/vertex index.", GH_ParamAccess.tree);
         }
 
         /// <summary>
@@ -92,10 +92,16 @@ namespace DihedralAngle
             Brep body = new Brep();
             DA.GetData(0, ref body);
 
+            if (body == null || body.Faces.Count == 0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Invalid Brep input.");
+                return;
+            }
+
             foreach (BrepFace face in body.Faces)
                 if (!face.IsPlanar())
                 {
-                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar");
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The Brep contains Faces that are not planar.");
                     return;
                 }
 
@@ -133,8 +139,10 @@ namespace DihedralAngle
                         Line line = new Line();
 
                         double distance = 100;
+                        int maxAttempts = ll.Length;
                         int counter = 0;
-                        while (distance > 1)
+
+                        while (distance > 1 && counter < maxAttempts)
                         {
                             double t;
                             if (edge.ClosestPoint(ll[counter].PointAt(0.5), out t))
@@ -162,7 +170,13 @@ namespace DihedralAngle
                     int[] vertexAdjacentEdgesIndexes = bv.EdgeIndices();
                     var vertexAdjacentEdges = body.Edges.Where(e => vertexAdjacentEdgesIndexes.Contains(e.EdgeIndex));
 
-                    BrepEdge nextBrepEdge = vertexAdjacentEdges.Where(e => e != edge && edgeDirectionDictionary.Keys.Contains(e)).ToList()[0];
+                    var nextBrepEdges = vertexAdjacentEdges.Where(e => e != edge && edgeDirectionDictionary.ContainsKey(e)).ToList();
+                    if (nextBrepEdges.Count == 0)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Cannot determine next BrepEdge.");
+                        continue;
+                    }
+                    var nextBrepEdge = nextBrepEdges[0];
 
                     Vector3d va = -edgeDirectionDictionary[edge];
                     Vector3d vb = edgeDirectionDictionary[nextBrepEdge];
