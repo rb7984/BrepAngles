@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DihedralAngle", "DihedralAngle\DihedralAngle.csproj", "{46B5033F-706A-4731-9C8A-96193B67EDC7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrepAngles", "DihedralAngle\BrepAngles.csproj", "{46B5033F-706A-4731-9C8A-96193B67EDC7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

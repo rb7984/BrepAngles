@@ -16,7 +16,7 @@ using System.Linq;
 // folder in Grasshopper.
 // You can use the _GrasshopperDeveloperSettings Rhino command for that.
 
-namespace DihedralAngle
+namespace BrepAngles
 {
     public class DihedralAngleComponent : GH_Component
     {

@@ -8,7 +8,8 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace DihedralAngle {
+namespace BrepAngles
+{
     using System;
     
     

@@ -9,7 +9,7 @@ using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
 
-namespace DihedralAngle
+namespace BrepAngles
 {
     public class PlanarAngle : GH_Component
     {

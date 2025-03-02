@@ -10,7 +10,7 @@ using Rhino.Geometry;
 using System.Runtime.InteropServices;
 using Grasshopper.Kernel.Geometry.Delaunay;
 
-namespace DihedralAngle
+namespace BrepAngles
 {
     public class DihedralAngleNPComponent : GH_Component
     {
