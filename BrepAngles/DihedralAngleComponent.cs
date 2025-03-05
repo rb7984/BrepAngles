@@ -16,6 +16,8 @@ using System.Linq;
 // folder in Grasshopper.
 // You can use the _GrasshopperDeveloperSettings Rhino command for that.
 
+//TODO separate common classes
+
 namespace BrepAngles
 {
     public class DihedralAngleComponent : GH_Component
@@ -76,10 +78,6 @@ namespace BrepAngles
 
             List<double> radians = new List<double>();
             List<double> degrees = new List<double>();
-
-            //TODO Add a display for Angular Dimensions
-            //List<AngularDimension> dimensions = new List<AngularDimension>();
-            //List<AngularDimensionObject> dimensionsObjects = new List<AngularDimensionObject>();
 
             Brep body = new Brep();
             DA.GetData(0, ref body);
@@ -175,8 +173,7 @@ namespace BrepAngles
 
             if (loopasacurve.IsPolyline())
             {
-                //TODO maximum length può causare dei danni?
-                loopasapolyline = loopasacurve.ToPolyline(0.1, 0.1, 0.1, 3000).ToPolyline();
+                loopasapolyline = loopasacurve.ToPolyline(0.1, 0.1, 0.1, loopasacurve.GetLength()).ToPolyline();
             }
 
             loopasapolyline.MergeColinearSegments(0.1, true);
