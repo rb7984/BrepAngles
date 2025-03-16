@@ -97,10 +97,18 @@ namespace BrepAngles
 
                 List<BrepFace> neighbourFaces = body.Faces.Where(f => neighbourFacesIndexes.Contains(f.FaceIndex)).ToList();
 
-                if (neighbourFaces.Count > 2)
+                if (neighbourFacesIndexes.Length > 2)
                 {
                     this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold.");
                     return;
+                }
+                else if (neighbourFacesIndexes.Length == 1)
+                {
+                    pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
+                    edgesIndexesForDisplay.Add(edge.EdgeIndex);
+
+                    radians.Add(Math.PI);
+                    degrees.Add(360);
                 }
                 else
                 {

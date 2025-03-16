@@ -106,37 +106,55 @@ namespace BrepAngles
                     this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Part of the Brep is non Manifold.");
                     return;
                 }
+                else if (neighbourFacesIndexes.Length == 1)
+                {
+                    pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
+                    edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
-                BrepFace face0 = neighbourFaces[0];
-                BrepFace face1 = neighbourFaces[1];
+                    radians.Add(Math.PI);
+                    degrees.Add(360);
 
-                double u0, v0, u1, v1;
-                face0.ClosestPoint(testPointOnEdge, out u0, out v0);
-                face1.ClosestPoint(testPointOnEdge, out u1, out v1);
+                    tangentsA.Add(Vector3d.Zero);
+                    normalsA.Add(Vector3d.Zero);
+                    crossProductsA.Add(Vector3d.Zero);
 
-                Vector3d faceNormal0 = face0.NormalAt(u0, v0);
-                Vector3d faceNormal1 = face1.NormalAt(u1, v1);
+                    tangentsB.Add(Vector3d.Zero);
+                    normalsB.Add(Vector3d.Zero);
+                    crossProductsB.Add(Vector3d.Zero);
+                }
+                else
+                {
+                    BrepFace face0 = neighbourFaces[0];
+                    BrepFace face1 = neighbourFaces[1];
 
-                AngularDimension d;
-                Vector3d ta;
-                Vector3d tb;
-                Vector3d cpa;
-                Vector3d cpb;
-                double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
+                    double u0, v0, u1, v1;
+                    face0.ClosestPoint(testPointOnEdge, out u0, out v0);
+                    face1.ClosestPoint(testPointOnEdge, out u1, out v1);
 
-                pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
-                edgesIndexesForDisplay.Add(edge.EdgeIndex);
+                    Vector3d faceNormal0 = face0.NormalAt(u0, v0);
+                    Vector3d faceNormal1 = face1.NormalAt(u1, v1);
 
-                radians.Add(dihedralAngle);
-                degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
+                    AngularDimension d;
+                    Vector3d ta;
+                    Vector3d tb;
+                    Vector3d cpa;
+                    Vector3d cpb;
+                    double dihedralAngle = Calculate(edge, testPointOnEdge, faceNormal0, faceNormal1, face0, out d, out ta, out tb, out cpa, out cpb);
 
-                tangentsA.Add(ta);
-                normalsA.Add(faceNormal0);
-                crossProductsA.Add(cpa);
+                    pointsForDisplay.Add(edge.GetBoundingBox(false).Center);
+                    edgesIndexesForDisplay.Add(edge.EdgeIndex);
 
-                tangentsB.Add(tb);
-                normalsB.Add(faceNormal1);
-                crossProductsB.Add(cpb);
+                    radians.Add(dihedralAngle);
+                    degrees.Add(RhinoMath.ToDegrees(dihedralAngle));
+
+                    tangentsA.Add(ta);
+                    normalsA.Add(faceNormal0);
+                    crossProductsA.Add(cpa);
+
+                    tangentsB.Add(tb);
+                    normalsB.Add(faceNormal1);
+                    crossProductsB.Add(cpb);
+                }
             }
 
             DA.SetDataList(0, radians);
